@@ -29,6 +29,12 @@
     var base = defaultState();
     if (!s) return base;
     s.trip = Object.assign({}, base.trip, s.trip || {});
+    // 标题 / 首页文案 / 日期 以代码（data.js）为准，改了立刻生效；
+    // 汇率和更新时间保留用户自己的。
+    s.trip.title = base.trip.title;
+    s.trip.hero = base.trip.hero;
+    s.trip.startDate = base.trip.startDate;
+    s.trip.endDate = base.trip.endDate;
     ["days","places","flights","reminders","checklist","expenses"].forEach(function(k){
       if (!Array.isArray(s[k])) s[k] = base[k];
     });
