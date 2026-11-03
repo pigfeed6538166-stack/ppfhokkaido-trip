@@ -83,6 +83,9 @@
     var root = $("#modalRoot");
     var fieldsHtml = (opts.fields || []).map(function(f){
       var val = (f.value != null) ? f.value : "";
+      if (f.type === "note"){
+        return '<p class="field-note">' + esc(f.text || "") + '</p>';
+      }
       if (f.type === "select"){
         var o = (f.options || []).map(function(opt){
           var sel = (String(opt.value) === String(val)) ? "selected" : "";
@@ -110,6 +113,7 @@
     function doSave(){
       var data = {};
       (opts.fields || []).forEach(function(f){
+        if (f.type === "note") return;
         var el = form.elements[f.name];
         if (!el){ data[f.name] = ""; return; }
         if (f.type === "number") data[f.name] = (el.value === "") ? "" : Number(el.value);
@@ -256,6 +260,7 @@
       '<section class="home-section">',
       '<button class="home-open-btn" data-act="goto" data-target="itinerary" type="button">打开行程手册 →</button>',
       '</section>',
+      '<section class="home-section">', syncSectionHtml(), '</section>',
       '<section class="home-section">',
       '<div class="backup-row">',
       '<button class="backup-btn" data-act="export-data" type="button">⬇ 导出备份</button>',
@@ -267,6 +272,52 @@
       '</div>'
     ].join("");
     syncNav();
+  }
+
+  // ---------- 云端同步（GitHub 仓库当数据库） ----------
+  function syncSectionHtml(){
+    var g = cfg.github || {};
+    var repoName = (g.owner && g.repo) ? (g.owner + "/" + g.repo) : "未配置仓库";
+    var hasToken = false;
+    try { hasToken = !!localStorage.getItem("gh_pat"); } catch(e){}
+    if (Store.isCloud() && Store.cloudName() === "GitHub"){
+      return [
+        '<div class="sync-card on">',
+        '<div class="sync-title">☁ 云端实时同步已开启</div>',
+        '<div class="sync-sub">', esc(repoName), ' · 每 8 秒自动刷新</div>',
+        '<button class="mini-btn" data-act="sync-off" type="button">断开同步</button>',
+        '</div>'
+      ].join("");
+    }
+    return [
+      '<div class="sync-card">',
+      '<div class="sync-title">让两个人实时看到同一份行程</div>',
+      '<div class="sync-sub">用你自己的 GitHub 仓库当同步空间 · 免费 · 国内可直连</div>',
+      hasToken ? '<div class="sync-sub">令牌已保存，正在连接…（连不上就检查令牌有没有 repo 权限）</div>' : '',
+      '<button class="home-open-btn" data-act="sync-on" type="button">',
+      (hasToken ? "重新输入令牌" : "开启云端同步 →"),
+      '</button>',
+      '<p class="backup-hint">怎么拿令牌：GitHub 网页 → 头像 → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token (classic) → 勾选 repo → Generate → 复制 ghp_ 开头那串。令牌只保存在你这台设备上，不会写进网页。</p>',
+      '</div>'
+    ].join("");
+  }
+
+  function openSyncModal(){
+    var cur = "";
+    try { cur = localStorage.getItem("gh_pat") || ""; } catch(e){}
+    openModal({
+      title: "开启云端同步",
+      fields: [
+        { type:"note", text:"粘贴你在 GitHub 生成的令牌（ghp_ 开头）。只保存在这台设备。" },
+        { name:"token", label:"GitHub 令牌", type:"text", value: cur, placeholder:"ghp_xxxxxxxxxxxx" }
+      ],
+      onSubmit: function(d){
+        var v = String(d.token || "").trim();
+        try { if (v) localStorage.setItem("gh_pat", v); else localStorage.removeItem("gh_pat"); } catch(e){}
+        toast(v ? "令牌已保存，正在连接…" : "已清除令牌");
+        setTimeout(function(){ location.reload(); }, 500);
+      }
+    });
   }
 
   // ---------- App 渲染 ----------
@@ -780,6 +831,8 @@
     else if (act === "add-expense") expenseForm(null);
     else if (act === "edit-expense") expenseForm(st.expenses.find(function(x){ return x.id === id; }));
     else if (act === "del-expense"){ if (confirm("删除这笔开销？")){ Store.update(function(s){ s.expenses = s.expenses.filter(function(x){ return x.id !== id; }); }); refresh(); } }
+    else if (act === "sync-on") openSyncModal();
+    else if (act === "sync-off"){ try { localStorage.removeItem("gh_pat"); } catch(e){} toast("已断开同步"); setTimeout(function(){ location.reload(); }, 400); }
     else if (act === "export-data") exportData();
     else if (act === "import-data") importData();
     else if (act === "save-fx"){ var v = parseFloat($("#fxInput").value); Store.update(function(s){ s.trip.fxRate = (isNaN(v) ? 0 : v); }); refresh(); toast("汇率已更新"); }
@@ -905,11 +958,7 @@
         console.warn(err);
         if ((isUnlocked() || forceOpen) && view === "lock") showView("home");
       });
-      if (Store.initSupabase){
-        Store.initSupabase().then(function(){
-          if (Store.isCloud()) return Store.load();
-        }).catch(function(){});
-      }
+      // 云端由 Store.load() 内部自动尝试（LeanCloud > Supabase > 本地）
     } catch(err){
       window.__appReady = true;
       var le = $("#lockErr");

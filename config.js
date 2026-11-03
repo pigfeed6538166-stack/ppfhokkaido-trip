@@ -1,18 +1,21 @@
-// ============================================================
-//  旅行记录 · 配置文件
-// ============================================================
 window.APP_CONFIG = {
   tripId: "猪猪饲料",
   accessPassword: "lu123321",
 
-  // ---- 云端实时同步 ----
-  // publishable key 可以公开（RLS 已开）。secret key 永远不要放这里。
-  supabaseUrl: "https://qsrnesyttezrehqusalb.supabase.co",
-  supabaseAnonKey: "sb_publishable_TYO7K_e-OIzlp3740ffXQQ_qiBljO8c",
+  // ---- 云端实时同步：用你自己的 GitHub 仓库当数据库（免费、国内可直连）----
+  // 令牌不写在这里，而是在页面里填一次，只存在你自己设备上。
+  github: {
+    owner: "pigfeed6538166-stack",
+    repo: "ppfhokkaido-trip",
+    branch: "main",
+    path: "trip-data.json"
+  },
 
-  // ---- Google 地图 ----
+  // ---- 备用（国内不可用，可留空）----
+  leancloud: { appId: "", appKey: "", serverURL: "" },
+  supabaseUrl: "",
+  supabaseAnonKey: "",
+
   googleMapsApiKey: "",
-
-  // 汇率：1 日元 = 多少人民币
   fxRate: 0.048
 };

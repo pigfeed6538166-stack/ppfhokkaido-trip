@@ -106,3 +106,59 @@ Supabase 的域名 *.supabase.co 在中国大陆被封锁（TCP 能连，但 TLS
 - 背景图和 Supabase SDK 已放到根目录：hokkaido-snow.jpg、supabase.min.js
   这样用 GitHub 网页上传时，全选文件拖上去就行，不用再处理子文件夹。
 - 只用根目录文件即可；supabase/ 和 .github/ 只跟数据库、自动部署有关，用「分支部署」时可以不管。
+## 十、LeanCloud 实时同步（v7，国内可用且免费）
+
+### 价格结论
+- LeanCloud 国内版（leancloud.cn）：**不免费**。开发版已不再提供，商用版最低 30 元/天。
+- LeanCloud 国际版（leancloud.app）：**有免费开发版**。额度：每天 3 万次 API 请求、1GB 存储、
+  LiveQuery 每天 100 次订阅 / 5000 条消息。两个人记录旅行完全够用。
+  国际版 API 域名（*.api.lncldglobal.com）在国内可以直连（已验证 TLS 可握手）。
+
+### 一次性配置步骤
+1. 打开 https://www.leancloud.app 注册并登录（邮箱即可，国际版不需要实名）
+2. 控制台创建应用（选「开发版」），名字随便写，例如 hokkaido
+3. 应用 → 设置 → 应用凭证（App Keys），复制三样东西：
+   - AppID
+   - AppKey
+   - 服务器地址 / Server URL（形如 https://abcd1234.api.lncldglobal.com）
+4. 存储 → 数据 → 创建 Class，名字必须是 Trip（不用加字段）
+   然后把这个 Class 的权限改成「所有用户可读写」（两人协作必需）
+5. 应用 → 设置 → 实时通信 / LiveQuery，打开 LiveQuery 开关
+6. 打开 config.js，把三个值填进 leancloud 段：
+   appId / appKey / serverURL
+7. 把整个文件夹重新上传到 GitHub，等 1 分钟刷新页面
+
+### 怎么判断成功
+- 右上角徽标从「本地」变成「☁ 实时同步」
+- 两台设备同时打开，A 改一个打卡点，B 那边 1-2 秒内自动变化
+- 如果还是「本地」：说明 LeanCloud 没连上，把浏览器控制台（F12 → Console）的红色报错发出来
+
+### 三层降级顺序
+1. LeanCloud（填了 appId 且连得上）
+2. Supabase（国内被墙，到日本或开 VPN 时生效）
+3. 浏览器本地（以上都不可用时，功能照常，数据存本机）
+
+## 十一、GitHub 仓库同步（v8，当前方案，国内免费可用）
+
+### 原理
+把整份行程数据作为一个 JSON 文件提交到你的 GitHub 仓库（trip-data.json），
+两台设备通过 api.github.com 每 8 秒拉一次，有改动就推上去。
+实测：api.github.com 国内可直连（200）；只有 raw.githubusercontent.com 被墙，我们没有用它。
+
+### 只需要一个 GitHub 令牌（不用注册任何新服务）
+1. 打开 https://github.com/settings/tokens → Generate new token (classic)
+2. Note 随便写（如 trip），Expiration 选 No expiration 或 90 days
+3. 勾选 repo（至少 public_repo）→ 底部 Generate token
+4. 复制 ghp_ 开头的那串（只显示一次）
+5. 打开网站 → 首页底部「开启云端同步 →」→ 粘贴令牌 → 保存
+6. 另一个人在她手机上同样操作，粘贴同一个令牌
+
+### 验证
+- 右上角徽标变成「☁ 实时同步」
+- A 改一个打卡点，B 那边 8 秒内自动更新
+
+### 注意
+- 令牌只保存在各自的浏览器本地，不会写进网页源码；泄露了随时在 GitHub 上 Revoke
+- 每次改动会在仓库里产生一条 commit（这是正常的）
+- 照片目前只存各自设备，不参与同步（要同步照片可以再加）
+- 数据文件在仓库根目录：trip-data.json

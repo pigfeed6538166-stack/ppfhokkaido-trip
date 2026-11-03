@@ -292,3 +292,11 @@ body{padding-bottom:calc(96px + env(safe-area-inset-bottom));}
 .backup-btn{flex:1;border:1px solid var(--line-strong);background:rgba(255,255,255,.92);color:var(--ink);padding:13px;border-radius:14px;font-size:13px;letter-spacing:.08em;cursor:pointer;box-shadow:var(--shadow-sm);}
 .backup-btn:active{transform:translateY(1px);}
 .backup-hint{font-size:11.5px;color:var(--muted);line-height:1.9;}
+
+/* ================= 云端同步卡片 ================= */
+.sync-card{border:1px solid var(--line);background:rgba(255,255,255,.94);border-radius:16px;padding:15px;box-shadow:var(--shadow-sm);}
+.sync-card.on{border-color:#bfe0c8;background:rgba(247,255,250,.96);}
+.sync-title{font-size:14.5px;font-weight:600;letter-spacing:.02em;margin-bottom:5px;}
+.sync-sub{font-size:11.5px;color:var(--muted);line-height:1.8;margin-bottom:9px;}
+.sync-card .home-open-btn{margin-top:4px;}
+.field-note{margin:0 0 4px;font-size:11.5px;color:var(--muted);line-height:1.8;}
