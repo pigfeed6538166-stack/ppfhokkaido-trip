@@ -242,7 +242,7 @@ main{padding:14px 12px 6px;max-width:560px;margin:0 auto;}
   position:absolute; inset:0;
   background-image:
     linear-gradient(180deg, rgba(255,255,255,.95) 0%, rgba(255,255,255,.80) 28%, rgba(255,255,255,.64) 56%, rgba(255,255,255,.86) 80%, rgba(255,255,255,.98) 100%),
-    url("assets/hokkaido-snow.jpg");
+    url("hokkaido-snow.jpg");
   background-size: cover, cover;
   background-position: center, center 26%;
   background-repeat: no-repeat, no-repeat;
@@ -286,3 +286,9 @@ body{padding-bottom:calc(96px + env(safe-area-inset-bottom));}
 .nav-item:active .nav-ico{transform:scale(.92);}
 
 .round-btn{padding:0;}
+
+/* ================= 备份按钮 ================= */
+.backup-row{display:flex;gap:10px;margin-bottom:10px;}
+.backup-btn{flex:1;border:1px solid var(--line-strong);background:rgba(255,255,255,.92);color:var(--ink);padding:13px;border-radius:14px;font-size:13px;letter-spacing:.08em;cursor:pointer;box-shadow:var(--shadow-sm);}
+.backup-btn:active{transform:translateY(1px);}
+.backup-hint{font-size:11.5px;color:var(--muted);line-height:1.9;}

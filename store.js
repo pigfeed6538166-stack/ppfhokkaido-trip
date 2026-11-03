@@ -6,6 +6,8 @@
   var sb = null;
   var listeners = [];
   var saveTimer = null;
+  var subscribed = false;
+  var cloudOk = false;
 
   function loadSdk(){
     function inject(src, timeoutMs){
@@ -23,9 +25,9 @@
     }
     if (window.supabase && window.supabase.createClient) return Promise.resolve(true);
     // 先加载本地打包好的 SDK（国内也能用），失败再退回 CDN
-    return inject("assets/supabase.min.js", 8000).then(function(ok){
+    return inject("supabase.min.js", 4000).then(function(ok){
       if (ok) return true;
-      return inject("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js", 8000);
+      return inject("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js", 4000);
     });
   }
 
@@ -36,7 +38,7 @@
     try { sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey); }
     catch(e){ sb = null; }
   }
-  function isCloud(){ return !!sb; }
+  function isCloud(){ return !!sb && cloudOk; }
 
   function loadLocal(){
     try {
@@ -75,8 +77,17 @@
     if (sb){
       try {
         var res = await sb.from("trips").select("*").eq("id", cfg.tripId).maybeSingle();
+        cloudOk = true;
         if (res && res.data && res.data.data){
-          state = normalize(res.data.data);
+          // 谁的更新时间更新，就以谁为准（避免回国后旧云端数据覆盖本地新改动）
+          var remoteTs = res.data.updated_at ? Date.parse(res.data.updated_at) : 0;
+          var localTs = (local && local.trip && local.trip.updatedAt) ? Date.parse(local.trip.updatedAt) : 0;
+          if (local && localTs > remoteTs){
+            state = normalize(local);
+            await upsertRemote(state);
+          } else {
+            state = normalize(res.data.data);
+          }
         } else if (local){
           state = normalize(local);
           await upsertRemote(state);
@@ -85,9 +96,12 @@
           await upsertRemote(state);
         }
         saveLocal(state);
+        if (subscribed) { emit(); return; }
+        subscribed = true;
         sb.channel("trip-" + cfg.tripId)
           .on("postgres_changes", { event: "*", schema: "public", table: "trips" }, function(payload){
             if (payload.new && payload.new.id === cfg.tripId && payload.new.data){
+              cloudOk = true;
               state = normalize(payload.new.data);
               saveLocal(state);
               emit();
@@ -97,6 +111,7 @@
       } catch(e){
         console.warn("云端不可用，退回本地模式", e);
         sb = null;
+        cloudOk = false;
         state = normalize(local);
         saveLocal(state);
       }

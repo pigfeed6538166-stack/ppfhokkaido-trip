@@ -256,6 +256,13 @@
       '<section class="home-section">',
       '<button class="home-open-btn" data-act="goto" data-target="itinerary" type="button">打开行程手册 →</button>',
       '</section>',
+      '<section class="home-section">',
+      '<div class="backup-row">',
+      '<button class="backup-btn" data-act="export-data" type="button">⬇ 导出备份</button>',
+      '<button class="backup-btn" data-act="import-data" type="button">⬆ 导入备份</button>',
+      '</div>',
+      '<p class="backup-hint">没有云端时，把导出的文件用微信发给对方，对方点「导入备份」即可看到你的全部改动；对方改完再导出给你。</p>',
+      '</section>',
       '<footer class="home-foot">雪会融化，但这些日子不会。<br>2027.01.30 — 02.04 · 北海道</footer>',
       '</div>'
     ].join("");
@@ -773,7 +780,56 @@
     else if (act === "add-expense") expenseForm(null);
     else if (act === "edit-expense") expenseForm(st.expenses.find(function(x){ return x.id === id; }));
     else if (act === "del-expense"){ if (confirm("删除这笔开销？")){ Store.update(function(s){ s.expenses = s.expenses.filter(function(x){ return x.id !== id; }); }); refresh(); } }
+    else if (act === "export-data") exportData();
+    else if (act === "import-data") importData();
     else if (act === "save-fx"){ var v = parseFloat($("#fxInput").value); Store.update(function(s){ s.trip.fxRate = (isNaN(v) ? 0 : v); }); refresh(); toast("汇率已更新"); }
+  }
+
+  // ---------- 备份：导出 / 导入 ----------
+  function exportData(){
+    var st = S();
+    if (!st) return;
+    try {
+      var blob = new Blob([JSON.stringify(st, null, 2)], { type: "application/json" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = "北海道-" + cfg.tripId + "-备份.json";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function(){ URL.revokeObjectURL(url); if (a.parentNode) a.parentNode.removeChild(a); }, 1500);
+      toast("已导出备份文件");
+    } catch(e){ toast("导出失败：" + e.message); }
+  }
+
+  function importData(){
+    var input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,application/json";
+    input.onchange = function(){
+      var file = input.files && input.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(){
+        try {
+          var data = JSON.parse(String(reader.result));
+          if (!data || !data.days || !data.places) throw new Error("不是有效的备份文件");
+          if (!confirm("导入会覆盖当前所有内容，确定吗？")) return;
+          Store.update(function(s){
+            ["trip","days","places","flights","reminders","checklist","expenses"].forEach(function(k){
+              if (data[k] !== undefined) s[k] = data[k];
+            });
+          });
+          refresh();
+          toast("导入成功");
+        } catch(err){
+          toast("导入失败：" + (err && err.message ? err.message : "文件格式不对"));
+        }
+      };
+      reader.onerror = function(){ toast("读取文件失败"); };
+      reader.readAsText(file, "utf-8");
+    };
+    input.click();
   }
 
   // ---------- 分享 ----------
@@ -841,15 +897,19 @@
       showView("lock");
     }
       window.__appReady = true;
-      Promise.resolve(Store.initSupabase ? Store.initSupabase() : null).then(function(){
-        return Store.load();
-      }).then(function(){
+      // 先用本地数据秒开，云端在后台尝试（连不上完全不影响使用）
+      Store.load().then(function(){
         if ((isUnlocked() || forceOpen) && view === "lock") showView("home");
         else refresh();
       }).catch(function(err){
         console.warn(err);
         if ((isUnlocked() || forceOpen) && view === "lock") showView("home");
       });
+      if (Store.initSupabase){
+        Store.initSupabase().then(function(){
+          if (Store.isCloud()) return Store.load();
+        }).catch(function(){});
+      }
     } catch(err){
       window.__appReady = true;
       var le = $("#lockErr");
